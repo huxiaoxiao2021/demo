@@ -28,9 +28,13 @@ public class HttpClientUtil {
 
     public static void main(String[] args) {
 
-        String url = "http://dms-w.jdl.com/center/reprintRecord/queryPageList";
+        String url = "http://gateway.jdl.com/report/queryLogsList.do";
         Map<String, String> headers = Maps.newHashMap();
         headers.put("Cookie", cookie);
+        headers.put("Accept", "application/json, text/javascript, */*; q=0.01");
+        headers.put("Accept-Encoding", "gzip, deflate");
+        
+        
         headers.put("Content-Type", "application/json; charset=utf-8");
         headers.put("x-proxy-opts", "{\"target\":\"http://origin.jmq.jd.com\",\"pathRewrite\":{\"^/api/jmqApi\":\"/\"}}");
 

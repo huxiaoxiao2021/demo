@@ -42,21 +42,19 @@ public class HttpJsfClientMain {
 //        String url = "ip:port/interface/alias/method";
 
         // request url
-        String ip = "11.158.129.248";
+        String ip = "10.253.61.10";
         String port = "22000";
-        String interfaceName = "com.jd.bluedragon.distribution.stock.StockInventoryJSFService";
-        String alias = "DMSTEST";
-        String method = "queryInventoryUnSendPacks";
+        String interfaceName = "com.jd.bluedragon.external.gateway.service.JyStrandReportGatewayService";
+        String alias = "123";
+        String method = "queryStrandReason";
         String url = "http://" + ip + ":" + port + "/" + interfaceName + "/" + alias + "/" + method;
         // 入参
         Map<String, Object> paramsMap = Maps.newHashMap();
-        paramsMap.put("waveCode", "010F002-20210616003100");
-        paramsMap.put("operateSiteCode", 910);
-        paramsMap.put("packList", Lists.newArrayList(
-                "JDV000700263971-1-3-",
-                "JDV000700263980-1-3-",
-                "JDV000700263999-1-3-",
-                "JDV000700264000-1-3-"));
+        paramsMap.put("curPage", 1);
+        paramsMap.put("pageSize", 10);
+        paramsMap.put("searchVo", "{\n" +
+                "        \"provinceAgencyCode\":\"210000\"\n" +
+                "    }");
         String result = sendByPost(url, new Object[]{paramsMap});
         LOGGER.info("result : {}", result);
         
@@ -68,7 +66,7 @@ public class HttpJsfClientMain {
         method = "query";
         url = "http://" + ip + ":" + port + "/" + interfaceName + "/" + alias + "/" + method;
         Map<String, Object> params1 = Maps.newHashMap();
-        params1.put("provinceAgencyCode", "100000");
+        params1.put("provinceAgencyCode", "210000");
         Map<String, Object> params2 = Maps.newHashMap();
         params2.put("curPage", 1);
         params2.put("pageSize", 10);
@@ -79,11 +77,11 @@ public class HttpJsfClientMain {
         LOGGER.info("result : {}", result);
 
         // get 请求
-        ip = "11.158.12.163";
+        ip = "11.157.192.196";
         port = "22000";
         interfaceName = "com.jdl.basic.api.service.site.SiteQueryService";
-        alias = "jy-basic-server-test";
-        method = "queryAllProvinceAgencyInfo";
+        alias = "jy-basic-server-uat";
+        method = "querySitePageByConditionFromBasicSite";
         url = "http://" + ip + ":" + port + "/" + interfaceName + "/" + alias + "/" + method;
         result = sendByGet(url);
         LOGGER.info("result : {}", result);

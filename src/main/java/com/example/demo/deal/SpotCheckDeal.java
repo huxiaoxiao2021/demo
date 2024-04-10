@@ -1,23 +1,18 @@
 package com.example.demo.deal;
 
-import com.example.demo.AException;
-import com.example.demo.BException;
-import com.example.demo.utils.*;
+import com.example.demo.utils.ExcelHelper;
+import com.example.demo.utils.JsonHelper;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.gson.JsonObject;
-import com.jd.etms.waybill.domain.Goods;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import net.sourceforge.pinyin4j.PinyinHelper;
-import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
-import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
-import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
-import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
-import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.util.thread.ExecutorThreadPool;
 
-import java.math.BigInteger;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -38,46 +33,82 @@ public class SpotCheckDeal {
 
     private static String file_Suffix = ".xlsx";
     private static String generate_path = "/Users/hujiping/project/tools/demo/src/main/resources/out/";
+
+
+    private static Lock lock = new ReentrantLock();
+    private static Condition c1 = lock.newCondition();
+    private static Condition c2 = lock.newCondition();
+    private static Condition c3 = lock.newCondition();
+    private static int turn = 1;
+    
+    public static void print(Condition myCondition, Condition nextCondition, int myTurn, String message){
+        while (true){
+            lock.lock();
+            try {
+                while (turn != myTurn) {
+                    myCondition.await();
+                }
+                if(Objects.equals(message, "home")){
+                    System.out.println(message);
+                }else {
+                    System.out.print(message + " ");
+                }
+                
+                turn = myTurn % 3 + 1;
+                nextCondition.signal();
+            }catch (Exception e){
+                Thread.currentThread().interrupt();
+            }finally {
+                lock.unlock();
+            }
+        }
+    }
     
     public static void main(String[] args) {
-        
-//        String url = "http://api_proxy.taishan.jd.com/api/jsf/v1/interface/invoke";
-//        Map<String, String> headers = Maps.newHashMap();
-//        headers.put("Cookie", cookie);
-//        headers.put("Content-Type", "application/json; charset=utf-8");
-//        headers.put("x-proxy-opts", "{\"target\":\"http://api.jsf.jd.com\"}");
-//
-//        Map<String, Object> params = Maps.newHashMap();
-//        params.put("interfaceName", "com.jd.ql.dms.report.SpotCheckQueryService");
-//        params.put("ip", "11.146.162.166");
-//        params.put("port", "2200");
-//        params.put("safVer", "210");
-//        params.put("interfaceId", 227023);
-//        params.put("alias", "dms-report");
-//        params.put("method", "insertOrUpdateSpotCheck");
-//        params.put("token", "");
-//        params.put("invokeBy", "telnet");
-//        params.put("opType", "REMOTE");
-//
-//        try {
-//            List<String> fieldList = Lists.newArrayList();
-//            fieldList.add("packageCode");
-//            fieldList.add("reviewSiteCode");
-//            List<SpotCheckDto> list = ExcelHelper.readFromExcel("/Users/hujiping/project/tools/demo/src/main/resources/sample/抽检.xlsx", SpotCheckDto.class, fieldList);
-//            for (SpotCheckDto spotCheckDto : list) {
-//                Map<String, Object> map = Maps.newHashMap();
-//                map.put("packageCode", spotCheckDto.getPackageCode());
-//                map.put("reviewSiteCode", Integer.valueOf(spotCheckDto.getReviewSiteCode()));
-//                map.put("yn", 0);
-//                params.put("param", JsonHelper.toJson(map));
-//                String response = HttpClientUtil.postJson(url, params, headers, String.class);
-//            }
-//        }catch (Exception e){
-//            log.error("服务异常!", e);
-//        }
-        
 
-        try {
+        try{
+
+            
+            
+
+            Thread t1 = new Thread(() -> print(c1, c2, 1,"welcome"));
+            Thread t2 = new Thread(() -> print(c2, c3,  2,"to"));
+            Thread t3 = new Thread(() -> print(c3, c1, 3,"home"));
+            t1.start();
+            t2.start();
+            t3.start();
+            
+            
+            
+
+            CompletableFuture<String> future1 = CompletableFuture.supplyAsync(() -> {
+                System.out.println("welcome");
+                return null;
+            });
+            
+            CompletableFuture<String> future2 = CompletableFuture.supplyAsync(() -> {
+                System.out.println("to");
+                return null;
+            });
+            CompletableFuture<String> combineResult =future1.thenCombine(future2, (result1, result2) -> {
+                System.out.println("home");
+                return null;
+            });
+            combineResult.get();
+
+            // 异常eclp_mark start
+            List<String> fieldListV1 = Lists.newArrayList();
+            fieldListV1.add("packageCode");
+            List<SheetV1> sheetV1List = ExcelHelper.readFromExcel("/Users/hujiping/Downloads/集包下线场地.xlsx", SheetV1.class, fieldListV1);
+
+            NeedUpdateEclpMarkBarCodeVO needUpdateEclpMarkBarCodeVO = new NeedUpdateEclpMarkBarCodeVO();
+            needUpdateEclpMarkBarCodeVO.setPackCodeList(
+                    sheetV1List.stream().map(SheetV1::getPackageCode).collect(Collectors.toList())
+            );
+            JsonHelper.toJson(needUpdateEclpMarkBarCodeVO);
+            // 异常eclp_mark end
+            
+            
             List<String> fieldList1 = Lists.newArrayList();
             fieldList1.add("waybillCode");
             fieldList1.add("createSiteCode");
@@ -98,9 +129,9 @@ public class SpotCheckDeal {
             List<String> sheet2WaybillList = list2.stream().map(Sheet2Row::getWaybillCode).collect(Collectors.toList());
 
             List<String> notExistList = Lists.newArrayList();
-            for (String item : sheet1WaybillList) {
-                if(!sheet2WaybillList.contains(item)){
-                    notExistList.add(item);
+            for (String item1 : sheet1WaybillList) {
+                if(!sheet2WaybillList.contains(item1)){
+                    notExistList.add(item1);
                 }
             }
 
@@ -146,43 +177,6 @@ public class SpotCheckDeal {
 
     }
 
-    public static String getFullPinyin(String name) {
-        // 创建格式化对象
-        HanyuPinyinOutputFormat outputFormat = new HanyuPinyinOutputFormat();
-        //设置大小写格式
-        outputFormat.setCaseType(HanyuPinyinCaseType.LOWERCASE);
-        //设置声调格式
-        outputFormat.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
-        // 放置输入结果
-        StringBuilder result = new StringBuilder();
-        // 字符数组
-        char[] charArray = name.toCharArray();
-        // 遍历字符
-        for (char c : charArray) {
-            // 中文会被变成全拼，非中文会被直接拼接在结果字符串中
-            if (Character.toString(c).matches("[\\u4E00-\\u9FA5]+")) {
-                String[] pinyinArray = new String[0];
-                try {
-                    pinyinArray = PinyinHelper.toHanyuPinyinStringArray(c, outputFormat);
-                } catch (BadHanyuPinyinOutputFormatCombination badHanyuPinyinOutputFormatCombination) {
-                    badHanyuPinyinOutputFormatCombination.printStackTrace();
-                }
-                if (pinyinArray != null) {
-                    result.append(pinyinArray[0]);
-                }
-            } else {
-                result.append(c);
-            }
-        }
-        return result.toString();
-    }
-
-    @Data
-    public static class SpotCheckDto {
-        private String packageCode;
-        private String reviewSiteCode;
-    }
-
     @Data
     public static class Sheet1Row {
         private String waybillCode;
@@ -200,14 +194,12 @@ public class SpotCheckDeal {
     }
 
     @Data
-    public static class ProvinceAgency {
-        private String organCode;
-        private String organName;
-        private String enumStr;
+    public static class SheetV1 {
+        private String packageCode;
     }
 
     @Data
-    public static class Student {
-        private String name;
+    public static class NeedUpdateEclpMarkBarCodeVO {
+        private List<String> packCodeList;
     }
 }
